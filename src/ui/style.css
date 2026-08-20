@@ -1,0 +1,252 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #121212;
+  color: #e6e6e6;
+}
+
+#app {
+  max-width: 680px;
+  margin: 24px auto;
+  padding: 24px;
+  background: #1e1e1e;
+  border-radius: 12px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+#nav {
+  display: flex;
+  gap: 6px;
+}
+
+.nav-btn {
+  background: #2a2a2a;
+  font-size: 13px;
+  padding: 8px 12px;
+}
+
+.nav-btn.active {
+  background: #1db954;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.banner {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #2a2a2a;
+  font-size: 14px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.banner.error {
+  background: #5c2b2b;
+}
+
+#status {
+  list-style: none;
+  padding: 0;
+  font-size: 14px;
+  color: #9a9a9a;
+  margin: 0 0 8px;
+}
+
+#status .ok {
+  color: #1db954;
+}
+
+#status .bad {
+  color: #d9534f;
+}
+
+#voice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+#talk {
+  padding: 12px 20px;
+  font-size: 16px;
+}
+
+#talk.recording {
+  background: #d9534f;
+}
+
+#voice-state {
+  font-size: 14px;
+  color: #9a9a9a;
+}
+
+#voice-info {
+  margin: 0 0 16px;
+  font-size: 13px;
+}
+
+#voice-info dt {
+  color: #9a9a9a;
+  margin-top: 8px;
+}
+
+#voice-info dd {
+  margin: 2px 0 0;
+  color: #e6e6e6;
+  word-break: break-word;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.row-inline {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.row-inline input {
+  flex: 1;
+}
+
+#command {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: #2a2a2a;
+  color: #fff;
+  font-size: 15px;
+}
+
+button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #1db954;
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+button:hover {
+  filter: brightness(1.1);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+#output {
+  margin-top: 16px;
+  padding: 12px;
+  background: #0f0f0f;
+  border-radius: 8px;
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 60px;
+}
+
+/* ------------------------- Settings ------------------------- */
+
+#settings-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  background: #2a2a2a;
+  font-size: 13px;
+  padding: 8px 14px;
+}
+
+.tab-btn.active {
+  background: #1db954;
+}
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 14px;
+}
+
+.tab label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #9a9a9a;
+}
+
+.tab label.check {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  color: #e6e6e6;
+  cursor: pointer;
+}
+
+.tab input[type="text"],
+.tab input[type="password"],
+.tab input[type="number"] {
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: #2a2a2a;
+  color: #fff;
+  font-size: 14px;
+  width: 100%;
+}
+
+.tab input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}
+
+.actions {
+  margin-top: 4px;
+}
+
+.hint {
+  font-size: 13px;
+  color: #9a9a9a;
+  min-height: 16px;
+  margin: 0;
+}
+
+.hint.ok {
+  color: #1db954;
+}
+
+.hint.error {
+  color: #d9534f;
+}

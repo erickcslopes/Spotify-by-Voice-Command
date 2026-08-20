@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spotify Voice Assistant</title>
+    <link rel="stylesheet" href="/src/ui/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <h1>Spotify Voice Assistant</h1>
+        <nav id="nav">
+          <button id="nav-main" class="nav-btn active" type="button">Principal</button>
+          <button id="nav-settings" class="nav-btn" type="button">Configurações</button>
+        </nav>
+      </header>
+
+      <div id="banner" class="banner hidden"></div>
+
+      <!-- ======================= VIEW PRINCIPAL ======================= -->
+      <section id="view-main">
+        <ul id="status">
+          <li>Spotify: <span id="spotify-status">—</span></li>
+          <li>Whisper: <span id="whisper-status">—</span></li>
+          <li>Grok: <span id="grok-status">—</span></li>
+          <li>Hotkey: <span id="hotkey-status">—</span></li>
+        </ul>
+
+        <section id="voice">
+          <button id="talk" type="button">🎤 Falar</button>
+          <span id="voice-state">Pronto</span>
+        </section>
+
+        <dl id="voice-info">
+          <dt>Última transcrição</dt>
+          <dd id="last-transcription">—</dd>
+          <dt>Última intenção</dt>
+          <dd id="last-intent">—</dd>
+          <dt>Resultado</dt>
+          <dd id="last-result">—</dd>
+        </dl>
+
+        <div class="row">
+          <input id="command" type="text" placeholder='Digite um comando (ex.: "toca Black Betty")' />
+          <button id="send" type="button">Enviar</button>
+        </div>
+        <pre id="output">Aguardando comando...</pre>
+      </section>
+
+      <!-- ======================= VIEW SETTINGS ======================= -->
+      <section id="view-settings" class="hidden">
+        <div id="settings-tabs">
+          <button class="tab-btn active" data-tab="general" type="button">Geral</button>
+          <button class="tab-btn" data-tab="spotify" type="button">Spotify</button>
+          <button class="tab-btn" data-tab="voice" type="button">Voz</button>
+          <button class="tab-btn" data-tab="whisper" type="button">Whisper</button>
+          <button class="tab-btn" data-tab="ai" type="button">IA</button>
+        </div>
+
+        <!-- General -->
+        <div id="tab-general" class="tab">
+          <label class="check">
+            <input id="set-start-minimized" type="checkbox" />
+            Iniciar minimizado
+          </label>
+          <label class="check">
+            <input id="set-minimize-to-tray" type="checkbox" />
+            Minimizar para tray ao fechar
+          </label>
+          <label class="check">
+            <input id="set-start-with-windows" type="checkbox" />
+            Iniciar com o Windows
+          </label>
+          <div class="actions"><button id="save-general" type="button">Salvar</button></div>
+        </div>
+
+        <!-- Spotify -->
+        <div id="tab-spotify" class="tab hidden">
+          <p>Status: <span id="spotify-status-detail">—</span></p>
+          <label>Client ID
+            <input id="set-spotify-client-id" type="text" placeholder="Seu Client ID do Spotify" />
+          </label>
+          <label>Redirect URI
+            <input id="set-spotify-redirect-uri" type="text" />
+          </label>
+          <div class="row actions">
+            <button id="spotify-connect" type="button">Conectar Spotify</button>
+            <button id="spotify-disconnect" type="button">Desconectar</button>
+            <button id="save-spotify" type="button">Salvar</button>
+          </div>
+        </div>
+
+        <!-- Voice -->
+        <div id="tab-voice" class="tab hidden">
+          <label>Hotkey global
+            <input id="set-hotkey" type="text" placeholder="Ctrl+Alt+Space" />
+          </label>
+          <label>Volume step (%)
+            <input id="set-volume-step" type="number" min="1" max="100" />
+          </label>
+          <label>Duração mínima de gravação (ms)
+            <input id="set-min-recording" type="number" min="100" max="60000" />
+          </label>
+          <div class="row actions">
+            <button id="apply-hotkey" type="button">Aplicar hotkey</button>
+            <button id="save-voice" type="button">Salvar</button>
+          </div>
+        </div>
+
+        <!-- Whisper -->
+        <div id="tab-whisper" class="tab hidden">
+          <label>Binário (whisper-cli.exe)
+            <span class="row-inline">
+              <input id="set-whisper-bin" type="text" placeholder="whisper-cli" />
+              <button id="pick-whisper-bin" type="button">Selecionar…</button>
+            </span>
+          </label>
+          <label>Modelo (ggml-*.bin)
+            <span class="row-inline">
+              <input id="set-whisper-model" type="text" placeholder="base" />
+              <button id="pick-whisper-model" type="button">Selecionar…</button>
+            </span>
+          </label>
+          <label>Timeout (ms)
+            <input id="set-whisper-timeout" type="number" min="1000" max="600000" />
+          </label>
+          <div class="row actions">
+            <button id="validate-whisper" type="button">Validar instalação</button>
+            <button id="save-whisper" type="button">Salvar</button>
+          </div>
+          <p id="whisper-validation" class="hint"></p>
+        </div>
+
+        <!-- AI -->
+        <div id="tab-ai" class="tab hidden">
+          <label class="check">
+            <input id="set-ai-enabled" type="checkbox" />
+            Habilitar fallback por IA
+          </label>
+          <label>Modelo
+            <input id="set-ai-model" type="text" placeholder="grok-3-mini" />
+          </label>
+          <label>API Key
+            <span class="row-inline">
+              <input id="set-ai-key" type="password" placeholder="sk-…" />
+              <button id="save-ai-key" type="button">Salvar chave</button>
+            </span>
+          </label>
+          <p id="ai-key-status" class="hint"></p>
+          <div class="actions"><button id="save-ai" type="button">Salvar</button></div>
+        </div>
+      </section>
+    </div>
+    <script type="module" src="/src/ui/main.ts"></script>
+  </body>
+</html>

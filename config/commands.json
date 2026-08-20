@@ -1,0 +1,96 @@
+{
+  "pause": [
+    "pausa",
+    "pause",
+    "pausar",
+    "para",
+    "para a musica",
+    "para a música",
+    "pausa a musica"
+  ],
+  "resume": [
+    "continua",
+    "continuar",
+    "continua tocando",
+    "continua tocando a musica",
+    "volta a tocar",
+    "resume",
+    "tocar de novo",
+    "toca de novo"
+  ],
+  "next_track": [
+    "proxima",
+    "próxima",
+    "proxima musica",
+    "próxima música",
+    "pula",
+    "pula essa",
+    "passa essa",
+    "pular",
+    "avanca",
+    "avança"
+  ],
+  "previous_track": [
+    "anterior",
+    "musica anterior",
+    "música anterior",
+    "volta",
+    "volta uma",
+    "voltar",
+    "toca a anterior",
+    "toca a música anterior"
+  ],
+  "currently_playing": [
+    "o que esta tocando",
+    "o que está tocando",
+    "que musica e essa",
+    "que música é essa",
+    "qual musica esta tocando",
+    "qual música está tocando",
+    "o que ta tocando",
+    "o que tá tocando",
+    "que esta tocando",
+    "o que esta tocando agora"
+  ],
+  "shuffle_on": [
+    "ativa aleatorio",
+    "ativa o aleatorio",
+    "modo aleatorio",
+    "ativa o modo aleatorio",
+    "shuffle",
+    "toca em modo aleatorio",
+    "ligar aleatorio"
+  ],
+  "shuffle_off": [
+    "desativa aleatorio",
+    "desativa o aleatorio",
+    "desliga shuffle",
+    "desliga o shuffle",
+    "tira do aleatorio",
+    "tira o aleatorio",
+    "desativa o modo aleatorio"
+  ],
+  "repeat_track": [
+    "repete essa",
+    "repete essa musica",
+    "repetir musica",
+    "repete essa música",
+    "repetir essa",
+    "repete a musica atual"
+  ],
+  "repeat_context": [
+    "repete a playlist",
+    "repete tudo",
+    "repete a fila",
+    "repetir a playlist",
+    "repetir tudo"
+  ],
+  "repeat_off": [
+    "desativa repeticao",
+    "desativa a repeticao",
+    "para de repetir",
+    "para de repetir a musica",
+    "desliga a repeticao",
+    "sem repeticao"
+  ]
+}

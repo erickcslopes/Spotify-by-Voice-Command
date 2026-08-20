@@ -1,0 +1,14 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permissões da janela principal (commands + plugins)",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "http:default",
+    "dialog:allow-open",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled"
+  ]
+}
