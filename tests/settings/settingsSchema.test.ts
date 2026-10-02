@@ -64,4 +64,11 @@ describe("Settings schema", () => {
     const s = applySettings({ general: "não é um objeto", voice: [1, 2, 3] });
     expect(s).toEqual(defaultSettings());
   });
+
+  it("voice.device: default vazio, preserva seleção e default em arquivo antigo", () => {
+    expect(defaultSettings().voice.device).toBe("");
+    const s = applySettings({ voice: { device: "Microfone (Realtek)" } });
+    expect(s.voice.device).toBe("Microfone (Realtek)");
+    expect(applySettings({ voice: { hotkey: "Ctrl+Alt+V" } }).voice.device).toBe("");
+  });
 });

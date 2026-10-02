@@ -1,6 +1,7 @@
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use serde::Serialize;
 use std::io::Write;
+use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::time::Instant;
@@ -37,7 +38,8 @@ pub struct RecordingResult {
 }
 
 impl AudioRecorder {
-    pub fn start(&self) -> Result<(), String> {
+    /// Inicia a gravação no dispositivo selecionado (None = padrão do sistema).
+    pub fn start(&self, device_name: Option<String>) -> Result<(), String> {
         let mut guard = self
             .active
             .lock()
@@ -56,8 +58,7 @@ impl AudioRecorder {
         let started = Instant::now();
 
         let handle = std::thread::spawn(move || {
-            let result = capture_loop(samples_cb, stop_cb);
-            let _ = tx.send(result);
+            capture_loop(samples_cb, stop_cb, device_name, tx);
         });
 
         match rx.recv_timeout(std::time::Duration::from_secs(5)) {
@@ -72,8 +73,16 @@ impl AudioRecorder {
                 });
                 Ok(())
             }
-            Ok(Err(err)) => Err(err),
-            Err(_) => Err("Tempo limite ao iniciar a captura.".into()),
+            Ok(Err(err)) => {
+                let _ = handle.join();
+                Err(err)
+            }
+            Err(_) => {
+                // A thread pode ainda estar abrindo o dispositivo; sinaliza parada.
+                stop.store(true, Ordering::SeqCst);
+                let _ = handle.join();
+                Err("Tempo limite ao iniciar a captura.".into())
+            }
         }
     }
 
@@ -121,31 +130,70 @@ impl AudioRecorder {
 
 /// Abre o microfone e captura em loop até o flag de parada.
 /// O `cpal::Stream` permanece exclusivamente nesta thread.
+/// O resultado de inicialização é enviado por `tx` assim que o stream entra em
+/// reprodução (antes do loop), para que `start()` registre a gravação como ativa
+/// sem esperar o término da captura.
 fn capture_loop(
     samples: Arc<Mutex<Vec<i16>>>,
     stop: Arc<AtomicBool>,
-) -> Result<(u32, u16), String> {
+    device_name: Option<String>,
+    tx: mpsc::Sender<Result<(u32, u16), String>>,
+) {
     let host = cpal::default_host();
-    let device = host.default_input_device().ok_or_else(|| {
-        "Microfone não encontrado. Conecte um dispositivo de entrada.".to_string()
-    })?;
-    let supported = device
-        .default_input_config()
-        .map_err(|e| format!("Não foi possível configurar o microfone: {e}"))?;
+    let device = match device_name.as_deref() {
+        Some(name) if !name.is_empty() => match host.input_devices() {
+            Ok(mut devices) => devices
+                .find(|device| device.name().map(|n| n == name).unwrap_or(false))
+                .or_else(|| host.default_input_device())
+                .ok_or_else(|| {
+                    "Microfone não encontrado. Conecte um dispositivo de entrada.".to_string()
+                }),
+            Err(e) => Err(format!("Não foi possível listar os microfones: {e}")),
+        },
+        _ => host
+            .default_input_device()
+            .ok_or_else(|| "Microfone não encontrado. Conecte um dispositivo de entrada.".to_string()),
+    };
+    let device = match device {
+        Ok(d) => d,
+        Err(e) => {
+            let _ = tx.send(Err(e));
+            return;
+        }
+    };
+
+    let supported = match device.default_input_config() {
+        Ok(s) => s,
+        Err(e) => {
+            let _ = tx.send(Err(format!("Não foi possível configurar o microfone: {e}")));
+            return;
+        }
+    };
 
     let sample_rate = supported.sample_rate().0;
     let channels = supported.channels();
-    let stream = build_stream(&device, &supported, &samples)?;
-    stream
-        .play()
-        .map_err(|e| format!("Erro ao iniciar a gravação: {e}"))?;
+    let stream = match build_stream(&device, &supported, &samples) {
+        Ok(s) => s,
+        Err(e) => {
+            let _ = tx.send(Err(e));
+            return;
+        }
+    };
+
+    if let Err(e) = stream.play() {
+        let _ = tx.send(Err(format!("Erro ao iniciar a gravação: {e}")));
+        return;
+    }
+
+    // Sinaliza início com sucesso imediatamente; a gravação segue ativa na thread.
+    if tx.send(Ok((sample_rate, channels))).is_err() {
+        return;
+    }
 
     while !stop.load(Ordering::SeqCst) {
         std::thread::sleep(std::time::Duration::from_millis(20));
     }
     drop(stream);
-
-    Ok((sample_rate, channels))
 }
 
 fn build_stream(
@@ -322,8 +370,10 @@ pub fn transcribe_audio(
         return Err(format!("Modelo do whisper não encontrado: {model}"));
     }
 
-    let mut child = std::process::Command::new(bin)
+    let mut child = Command::new(bin)
         .args(["-m", &model, "-f", &path, "-nt", "-l", "auto"])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| format!("Falha ao executar o whisper: {e}"))?;
 
@@ -356,8 +406,13 @@ pub fn transcribe_audio(
 }
 
 #[tauri::command]
-pub fn start_recording(state: State<AudioRecorder>) -> Result<(), String> {
-    state.start()
+pub fn start_recording(
+    state: State<AudioRecorder>,
+    settings: TauriState<SettingsService>,
+) -> Result<(), String> {
+    let device = settings.current().voice.device;
+    let device = (!device.trim().is_empty()).then(|| device.trim().to_string());
+    state.start(device)
 }
 
 #[tauri::command]
@@ -368,4 +423,18 @@ pub fn stop_recording(state: State<AudioRecorder>) -> Result<RecordingResult, St
 #[tauri::command]
 pub fn is_recording(state: State<AudioRecorder>) -> bool {
     state.is_recording()
+}
+
+/// Lista os dispositivos de entrada disponíveis (nome exibido ao usuário).
+#[tauri::command]
+pub fn list_input_devices() -> Vec<String> {
+    let host = cpal::default_host();
+    host.input_devices()
+        .map(|devices| {
+            devices
+                .filter_map(|device| device.name().ok())
+                .filter(|name| !name.trim().is_empty())
+                .collect()
+        })
+        .unwrap_or_default()
 }

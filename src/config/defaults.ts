@@ -17,8 +17,8 @@ export const DEFAULTS = {
     minRecordingMs: 300,
   },
   spotify: {
-    callbackPort: 1420,
-    redirectUri: "http://127.0.0.1:1420/callback",
+    callbackPort: 1421,
+    redirectUri: "http://127.0.0.1:1421/callback",
   },
   general: {
     startMinimized: false,

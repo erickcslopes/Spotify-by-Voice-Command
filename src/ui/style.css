@@ -80,6 +80,11 @@ h1 {
   color: #d9534f;
 }
 
+#voice-info .error-text.has-error,
+#last-result.has-error {
+  color: #d9534f;
+}
+
 #voice {
   display: flex;
   align-items: center;

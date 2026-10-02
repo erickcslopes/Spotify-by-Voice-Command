@@ -75,7 +75,7 @@ Preencha `SPOTIFY_CLIENT_ID`. Para testar o fallback, preencha também `XAI_API_
 ## Configuração Spotify
 
 1. Crie um app em <https://developer.spotify.com/dashboard>.
-2. Em **Redirect URIs**, adicione: `http://127.0.0.1:1420/callback`
+2. Em **Redirect URIs**, adicione: `http://127.0.0.1:1421/callback`
 3. Copie o `Client ID` para `SPOTIFY_CLIENT_ID` no `.env`.
 
 Autenticar (modo texto):
@@ -192,7 +192,7 @@ defaults (src/config/defaults.ts)
 
 A chave da IA fica no keyring do sistema; tokens do Spotify em `~/.spotify-voice-assistant/tokens.json` (fora do repositório).
 
-> Em `npm run tauri dev`, a porta 1420 é ocupada pelo Vite — use um Redirect URI com outra porta (ex.: `http://127.0.0.1:1421/callback`) no Dashboard do Spotify se quiser testar o login em desenvolvimento.
+> Não use a porta 1420 no Redirect URI (é a porta do Vite, ocupada em dev e em alguns ambientes). A padrão do app é `1421`; se trocar, registre a mesma URI no Dashboard do Spotify e no app (Configurações → Spotify).
 
 ## Teste manual
 

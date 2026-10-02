@@ -40,7 +40,9 @@ const talkButton = document.getElementById("talk") as HTMLButtonElement;
 const voiceStateEl = document.getElementById("voice-state") as HTMLSpanElement;
 const transcriptionEl = document.getElementById("last-transcription") as HTMLElement;
 const intentEl = document.getElementById("last-intent") as HTMLElement;
+const sourceEl = document.getElementById("last-source") as HTMLElement;
 const resultEl = document.getElementById("last-result") as HTMLElement;
+const errorEl = document.getElementById("last-error") as HTMLElement;
 const input = document.getElementById("command") as HTMLInputElement;
 const send = document.getElementById("send") as HTMLButtonElement;
 const output = document.getElementById("output") as HTMLPreElement;
@@ -56,6 +58,8 @@ const setStartWithWindows = document.getElementById("set-start-with-windows") as
 const setClientId = document.getElementById("set-spotify-client-id") as HTMLInputElement;
 const setRedirectUri = document.getElementById("set-spotify-redirect-uri") as HTMLInputElement;
 const setHotkey = document.getElementById("set-hotkey") as HTMLInputElement;
+const setMicDevice = document.getElementById("set-mic-device") as HTMLSelectElement;
+const refreshMics = document.getElementById("refresh-mics") as HTMLButtonElement;
 const setVolumeStep = document.getElementById("set-volume-step") as HTMLInputElement;
 const setMinRecording = document.getElementById("set-min-recording") as HTMLInputElement;
 const setWhisperBin = document.getElementById("set-whisper-bin") as HTMLInputElement;
@@ -103,7 +107,16 @@ function renderVoiceState(state: VoiceState): void {
 function renderResults(): void {
   if (!app) return;
   intentEl.textContent = app.state.lastIntent ?? "—";
-  resultEl.textContent = app.state.lastResult ?? "—";
+  sourceEl.textContent = app.state.lastSource ?? "—";
+  errorEl.textContent = app.state.lastError ?? "—";
+  errorEl.classList.toggle("has-error", Boolean(app.state.lastError));
+  if (app.state.lastError) {
+    resultEl.textContent = app.state.lastError;
+    resultEl.classList.add("has-error");
+  } else {
+    resultEl.textContent = app.state.lastResult ?? "—";
+    resultEl.classList.remove("has-error");
+  }
 }
 
 function setStatus(el: HTMLElement, ok: boolean, okText: string, badText: string): void {
@@ -228,7 +241,12 @@ async function refreshStatus(): Promise<void> {
 
 async function persistSettings(next: Settings): Promise<void> {
   settings = next;
-  await new TauriSettingsStore().save(next);
+  try {
+    await new TauriSettingsStore().save(next);
+  } catch (error) {
+    banner(`Falha ao salvar as configurações: ${String(error)}`, true);
+    throw error;
+  }
   await rebuildApp();
   banner("Configurações salvas.");
 }
@@ -352,8 +370,28 @@ document.getElementById("save-voice")?.addEventListener("click", async () => {
   settings.voice.volumeStep = clampNumber(setVolumeStep.value, 1, 100, 10);
   settings.voice.minimumRecordingMs = clampNumber(setMinRecording.value, 100, 60000, 300);
   settings.voice.hotkey = setHotkey.value.trim() || settings.voice.hotkey;
+  settings.voice.device = setMicDevice.value.trim();
   await persistSettings(settings);
 });
+
+refreshMics.addEventListener("click", () => void populateMicDevices());
+
+async function populateMicDevices(selected?: string): Promise<void> {
+  const devices = await invoke<string[]>("list_input_devices");
+  const current = selected ?? setMicDevice.value;
+  setMicDevice.innerHTML = "";
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "";
+  defaultOption.textContent = "Padrão do sistema";
+  setMicDevice.appendChild(defaultOption);
+  for (const name of devices) {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    setMicDevice.appendChild(option);
+  }
+  setMicDevice.value = devices.includes(current) ? current : "";
+}
 
 // ------------------------------ Settings: Whisper --------------------------
 document.getElementById("pick-whisper-bin")?.addEventListener("click", async () => {
@@ -373,6 +411,11 @@ document.getElementById("pick-whisper-model")?.addEventListener("click", async (
 });
 
 document.getElementById("validate-whisper")?.addEventListener("click", async () => {
+  if (!settings) return;
+  settings.whisper.binaryPath = setWhisperBin.value.trim();
+  settings.whisper.modelPath = setWhisperModel.value.trim();
+  settings.whisper.timeoutMs = clampNumber(setWhisperTimeout.value, 1000, 600000, 60000);
+  await persistSettings(settings);
   await validateWhisper();
   await refreshStatus();
 });
@@ -413,6 +456,7 @@ function loadSettingsIntoForm(s: Settings): void {
   setClientId.value = s.spotify.clientId;
   setRedirectUri.value = s.spotify.redirectUri;
   setHotkey.value = s.voice.hotkey;
+  setMicDevice.value = s.voice.device;
   setVolumeStep.value = String(s.voice.volumeStep);
   setMinRecording.value = String(s.voice.minimumRecordingMs);
   setWhisperBin.value = s.whisper.binaryPath;
@@ -426,6 +470,7 @@ async function initDesktop(): Promise<void> {
   const store = new TauriSettingsStore();
   settings = await store.load();
   loadSettingsIntoForm(settings);
+  void populateMicDevices(settings.voice.device);
 
   hotkeyController = new HotkeyController({
     set: (combo) => invoke("hotkey_set", { combo }),

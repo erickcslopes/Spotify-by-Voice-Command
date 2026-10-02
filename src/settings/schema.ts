@@ -19,6 +19,7 @@ export const SettingsSchema = z.object({
         .min(100)
         .max(60_000)
         .default(DEFAULTS.voice.minRecordingMs),
+      device: z.string().default(""),
     })
     .default({}),
   whisper: z

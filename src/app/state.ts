@@ -4,7 +4,9 @@ export interface AppState {
   voiceReady: boolean;
   lastCommand: string | null;
   lastIntent: string | null;
+  lastSource: "local" | "ai" | null;
   lastResult: string | null;
+  lastError: string | null;
 }
 
 export interface UsageMetrics {
@@ -20,7 +22,9 @@ export function createState(): AppState {
     voiceReady: false,
     lastCommand: null,
     lastIntent: null,
+    lastSource: null,
     lastResult: null,
+    lastError: null,
   };
 }
 

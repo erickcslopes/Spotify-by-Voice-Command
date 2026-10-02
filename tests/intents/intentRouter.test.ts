@@ -30,6 +30,17 @@ describe("IntentRouter", () => {
     expect(result.results[0]?.source).toBe("ai");
   });
 
+  it('"play" é resolvido localmente como resume sem chamar a IA', async () => {
+    const ai = { parse: vi.fn(async () => []) };
+    const router = makeRouter(ai);
+
+    const result = await router.route("play");
+    expect(result.aiCalled).toBe(false);
+    expect(ai.parse).not.toHaveBeenCalled();
+    expect(result.results[0]?.intent.type).toBe("resume");
+    expect(result.results[0]?.source).toBe("local");
+  });
+
   it("chama a IA para comandos compostos", async () => {
     const ai = {
       parse: vi.fn(async () => [

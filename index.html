@@ -37,8 +37,12 @@
           <dd id="last-transcription">—</dd>
           <dt>Última intenção</dt>
           <dd id="last-intent">—</dd>
+          <dt>Origem</dt>
+          <dd id="last-source">—</dd>
           <dt>Resultado</dt>
           <dd id="last-result">—</dd>
+          <dt>Erro</dt>
+          <dd id="last-error" class="error-text">—</dd>
         </dl>
 
         <div class="row">
@@ -95,6 +99,12 @@
         <div id="tab-voice" class="tab hidden">
           <label>Hotkey global
             <input id="set-hotkey" type="text" placeholder="Ctrl+Alt+Space" />
+          </label>
+          <label>Microfone
+            <span class="row-inline">
+              <select id="set-mic-device"></select>
+              <button id="refresh-mics" type="button">Atualizar</button>
+            </span>
           </label>
           <label>Volume step (%)
             <input id="set-volume-step" type="number" min="1" max="100" />

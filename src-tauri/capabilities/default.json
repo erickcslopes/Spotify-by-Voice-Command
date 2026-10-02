@@ -5,10 +5,24 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "http:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        {
+          "url": "https://accounts.spotify.com/api/token"
+        },
+        {
+          "url": "https://api.spotify.com/v1/*"
+        },
+        {
+          "url": "https://api.x.ai/v1/*"
+        }
+      ]
+    },
     "dialog:allow-open",
     "autostart:allow-enable",
     "autostart:allow-disable",
-    "autostart:allow-is-enabled"
+    "autostart:allow-is-enabled",
+    "opener:allow-open-url"
   ]
 }

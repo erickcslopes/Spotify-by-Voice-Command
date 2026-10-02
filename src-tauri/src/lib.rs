@@ -12,6 +12,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
@@ -68,6 +69,7 @@ pub fn run() {
             audio::stop_recording,
             audio::is_recording,
             audio::transcribe_audio,
+            audio::list_input_devices,
             commands::process_text,
             commands::status,
             settings::get_settings,

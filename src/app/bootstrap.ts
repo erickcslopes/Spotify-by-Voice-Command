@@ -108,7 +108,10 @@ export async function buildApp(
    */
   async function processCommand(rawText: string): Promise<void> {
     state.lastCommand = rawText;
+    state.lastError = null;
     metrics.total += 1;
+
+    console.log(`[command] input=${JSON.stringify(rawText)}`);
 
     const { results, aiCalled } = await router.route(rawText);
     if (aiCalled) {
@@ -119,18 +122,30 @@ export async function buildApp(
 
     if (results.length === 0) {
       state.lastIntent = "unknown";
+      state.lastSource = null;
       feedback.say("Não consegui interpretar esse comando.");
+      console.log("[command] no-intent");
       return;
     }
 
     for (const result of results) {
       state.lastIntent = result.intent.type;
+      state.lastSource = result.source;
+      console.log(
+        `[command] intent=${result.intent.type} source=${result.source}`,
+      );
       try {
         const action = await controller.execute(result.intent);
         state.lastResult = action.message;
+        state.lastError = null;
         feedback.say(action.message);
+        console.log(`[command] ok: ${action.message}`);
       } catch (error) {
+        state.lastResult = null;
+        state.lastError =
+          error instanceof Error ? error.message : String(error);
         feedback.error(error);
+        console.log(`[command] error: ${state.lastError}`);
       }
     }
   }

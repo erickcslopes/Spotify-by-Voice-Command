@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager, State};
+use tauri_plugin_opener::OpenerExt;
 
 const KEYRING_SERVICE: &str = "com.spotifyvoiceassistant.app";
 const KEYRING_ACCOUNT: &str = "xai_api_key";
@@ -43,6 +44,7 @@ pub struct VoiceSettings {
     pub hotkey: String,
     pub volume_step: i64,
     pub minimum_recording_ms: i64,
+    pub device: String,
 }
 
 impl Default for VoiceSettings {
@@ -51,6 +53,7 @@ impl Default for VoiceSettings {
             hotkey: "Ctrl+Alt+Space".into(),
             volume_step: 10,
             minimum_recording_ms: 300,
+            device: String::new(),
         }
     }
 }
@@ -100,7 +103,7 @@ impl Default for SpotifySettings {
     fn default() -> Self {
         SpotifySettings {
             client_id: String::new(),
-            redirect_uri: "http://127.0.0.1:1420/callback".into(),
+            redirect_uri: "http://127.0.0.1:1421/callback".into(),
         }
     }
 }
@@ -140,6 +143,10 @@ impl SettingsService {
     pub fn save(&self, settings: Settings) -> Result<(), String> {
         let json = serde_json::to_string_pretty(&settings)
             .map_err(|e| format!("Falha ao serializar settings: {e}"))?;
+        if let Some(dir) = self.path.parent() {
+            std::fs::create_dir_all(dir)
+                .map_err(|e| format!("Falha ao criar diretório de settings: {e}"))?;
+        }
         let tmp = self.path.with_extension("json.tmp");
         std::fs::write(&tmp, json).map_err(|e| format!("Falha ao salvar settings: {e}"))?;
         std::fs::rename(&tmp, &self.path)
@@ -350,14 +357,19 @@ pub struct AuthCallback {
 }
 
 #[tauri::command]
-pub async fn auth_open_callback_server(port: u16) -> Result<AuthCallback, String> {
-    let result = tauri::async_runtime::spawn_blocking(move || listen_for_spotify_code(port))
-        .await
-        .map_err(|e| format!("Falha no servidor de callback: {e}"))?;
+pub async fn auth_open_callback_server(
+    port: u16,
+    state: Option<String>,
+) -> Result<AuthCallback, String> {
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        listen_for_spotify_code(port, state)
+    })
+    .await
+    .map_err(|e| format!("Falha no servidor de callback: {e}"))?;
     result
 }
 
-fn listen_for_spotify_code(port: u16) -> Result<AuthCallback, String> {
+fn listen_for_spotify_code(port: u16, expected_state: Option<String>) -> Result<AuthCallback, String> {
     use std::io::{Read, Write};
     use std::net::TcpListener;
 
@@ -395,13 +407,20 @@ fn listen_for_spotify_code(port: u16) -> Result<AuthCallback, String> {
                     continue;
                 }
                 let request = String::from_utf8_lossy(&request);
-                let code = extract_code_from_request(&request);
-                let (html, status) = match &code {
-                    Some(_) => (
+                let code = extract_query_param(&request, "code");
+                let state_matches = match expected_state.as_deref() {
+                    None => true,
+                    Some(expected) if expected.trim().is_empty() => true,
+                    Some(expected) => {
+                        extract_query_param(&request, "state").as_deref() == Some(expected)
+                    }
+                };
+                let (html, status) = match (&code, state_matches) {
+                    (Some(_), true) => (
                         "<h1>Autenticado! Você já pode fechar esta janela.</h1>",
                         "200 OK",
                     ),
-                    None => ("<h1>Falha na autenticação.</h1>", "400 Bad Request"),
+                    _ => ("<h1>Falha na autenticação.</h1>", "400 Bad Request"),
                 };
                 let body = format!(
                     "<!doctype html><html><body style=\"font-family:system-ui;padding:40px\">{html}</body></html>"
@@ -415,7 +434,10 @@ fn listen_for_spotify_code(port: u16) -> Result<AuthCallback, String> {
                     .as_bytes(),
                 );
                 let _ = stream.flush();
-                return Ok(AuthCallback { code });
+                if state_matches {
+                    return Ok(AuthCallback { code });
+                }
+                return Err("State do OAuth não confere (possível CSRF).".into());
             }
             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 if std::time::Instant::now() >= deadline {
@@ -428,13 +450,13 @@ fn listen_for_spotify_code(port: u16) -> Result<AuthCallback, String> {
     }
 }
 
-fn extract_code_from_request(request: &str) -> Option<String> {
+fn extract_query_param(request: &str, key: &str) -> Option<String> {
     let line = request.lines().next()?;
     let target = line.split_whitespace().nth(1)?;
     let query = target.split('?').nth(1)?;
     for pair in query.split('&') {
-        if let Some((key, value)) = pair.split_once('=') {
-            if key == "code" && !value.is_empty() {
+        if let Some((k, value)) = pair.split_once('=') {
+            if k == key && !value.is_empty() {
                 return Some(value.to_string());
             }
         }
@@ -443,18 +465,15 @@ fn extract_code_from_request(request: &str) -> Option<String> {
 }
 
 #[tauri::command]
-pub fn open_url(url: String) -> Result<(), String> {
+pub fn open_url(app: tauri::AppHandle, url: String) -> Result<(), String> {
     if !(url.starts_with("http://") || url.starts_with("https://")) {
         return Err("URL inválida.".into());
     }
-    let opened = if cfg!(target_os = "windows") {
-        std::process::Command::new("cmd")
-            .args(["/C", "start", "", &url])
-            .spawn()
-    } else if cfg!(target_os = "macos") {
-        std::process::Command::new("open").arg(&url).spawn()
-    } else {
-        std::process::Command::new("xdg-open").arg(&url).spawn()
-    };
-    opened.map(|_| ()).map_err(|e| format!("Falha ao abrir o navegador: {e}"))
+    // `cmd /C start` divide a URL nos "&" da query (trunca em client_id=... e
+    // o Spotify responde "response_type must be code"); `explorer.exe` também
+    // não abria o navegador. Aqui usamos o tauri-plugin-opener oficial, que
+    // abre URLs HTTP/HTTPS no navegador padrão sem passar por shell.
+    app.opener()
+        .open_url(url, None::<&str>)
+        .map_err(|e| e.to_string())
 }

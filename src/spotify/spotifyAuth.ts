@@ -30,7 +30,11 @@ export interface TokenStore {
  * Rust, que escuta na porta local e abre o navegador padrão.
  */
 export interface AuthBackend {
-  startCallbackServer(port: number, redirectUri: string): Promise<string>;
+  startCallbackServer(
+    port: number,
+    redirectUri: string,
+    expectedState?: string,
+  ): Promise<string>;
   openUrl(url: string): Promise<void>;
 }
 
@@ -51,10 +55,16 @@ export async function generateCodeChallenge(verifier: string): Promise<string> {
   return base64url(new Uint8Array(digest));
 }
 
+export function generateState(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return base64url(bytes);
+}
+
 export function buildAuthorizationUrl(
   clientId: string,
   redirectUri: string,
   verifier: string,
+  state: string,
 ): string {
   return (
     `${AUTH_ENDPOINT}?` +
@@ -65,6 +75,7 @@ export function buildAuthorizationUrl(
       scope: SPOTIFY_SCOPES,
       code_challenge_method: "S256",
       code_challenge: verifier,
+      state,
       show_dialog: "true",
     }).toString()
   );
@@ -126,18 +137,30 @@ export async function refreshAccessToken(
 
 /** Backend Node: servidor HTTP local + abertura do navegador via child_process. */
 export class NodeAuthBackend implements AuthBackend {
-  async startCallbackServer(port: number, redirectUri: string): Promise<string> {
+  async startCallbackServer(
+    port: number,
+    redirectUri: string,
+    expectedState?: string,
+  ): Promise<string> {
     const { default: http } = await import("node:http");
     return new Promise<string>((resolve, reject) => {
       const server = http.createServer(async (req, res) => {
         try {
           const urlObj = new URL(req.url ?? "", redirectUri);
           const code = urlObj.searchParams.get("code");
+          const state = urlObj.searchParams.get("state");
           if (!code) {
             res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
             res.end("<h1>Falha na autenticação.</h1>");
             server.close();
             reject(new Error("Autenticação cancelada."));
+            return;
+          }
+          if (expectedState && state !== expectedState) {
+            res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
+            res.end("<h1>Falha na autenticação (state inválido).</h1>");
+            server.close();
+            reject(new Error("State do OAuth não confere (possível CSRF)."));
             return;
           }
           res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
@@ -175,10 +198,15 @@ export class NodeAuthBackend implements AuthBackend {
 
 /** Backend Tauri: delega ao Rust (callback local + navegador padrão). */
 export class TauriAuthBackend implements AuthBackend {
-  async startCallbackServer(port: number): Promise<string> {
+  async startCallbackServer(
+    port: number,
+    _redirectUri: string,
+    expectedState?: string,
+  ): Promise<string> {
     const { invoke } = await import("@tauri-apps/api/core");
     const result = await invoke<{ code?: string }>("auth_open_callback_server", {
       port,
+      state: expectedState ?? "",
     });
     const code = result?.code;
     if (!code) throw new Error("Autenticação cancelada.");
@@ -244,15 +272,18 @@ export class SpotifyAuthClient {
   async login(): Promise<void> {
     const verifier = generateCodeVerifier();
     const challenge = await generateCodeChallenge(verifier);
+    const state = generateState();
     const url = buildAuthorizationUrl(
       this.options.clientId,
       this.options.redirectUri,
       challenge,
+      state,
     );
 
     const codePromise = this.backend.startCallbackServer(
       this.options.callbackPort,
       this.options.redirectUri,
+      state,
     );
     await this.backend.openUrl(url);
 
